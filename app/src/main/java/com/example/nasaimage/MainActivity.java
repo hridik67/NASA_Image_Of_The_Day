@@ -6,7 +6,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
-
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -16,9 +15,9 @@ import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.example.nasaimage.DAO.AppDatabase;
 import com.example.nasaimage.Models.CachedImageData;
-
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,6 +32,10 @@ public class MainActivity extends AppCompatActivity {
 
     private AppDatabase db; // Room database
 
+    private static final String PREFS_NAME = "APOD_PREFS";
+    private static final String PREFS_KEY_RESPONSE = "APOD_RESPONSE";
+    private static final String PREFS_KEY_TIMESTAMP = "APOD_TIMESTAMP";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,8 +49,8 @@ public class MainActivity extends AppCompatActivity {
         requestQueue = Volley.newRequestQueue(this);
         db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "image-database").build();
 
-        // Try to get cached data, or fetch data from APOD API if not cached
-        getCachedImageData(APOD_API_URL);
+        // Try to get cached data, or fetch data from APOD API if not cached or cache has expired
+        getCachedImageData();
     }
 
     private void fetchDataFromAPOD() {
@@ -125,16 +128,15 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void getCachedImageData(final String imageUrl) {
+    private void getCachedImageData() {
         // Use a background thread for database operations
         new Thread(new Runnable() {
             @Override
             public void run() {
-                CachedImageData cachedData = db.cachedImageDataDao().getImageData(imageUrl);
+                CachedImageData cachedData = db.cachedImageDataDao().getImageData(APOD_API_URL);
 
                 if (cachedData != null) {
                     // Data is cached, update UI with cached data
-                    //Toast.makeText(MainActivity.this, "cached data", Toast.LENGTH_SHORT).show();
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -155,5 +157,27 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }).start();
+    }
+
+    // Check if the cache has expired (older than 24 hours)
+    private boolean isCacheExpired(long timestamp) {
+        Calendar lastFetched = Calendar.getInstance();
+        lastFetched.setTimeInMillis(timestamp);
+
+        Calendar current = Calendar.getInstance();
+
+        // Set the time to 12:00 AM for both calendars
+        lastFetched.set(Calendar.HOUR_OF_DAY, 0);
+        lastFetched.set(Calendar.MINUTE, 0);
+        lastFetched.set(Calendar.SECOND, 0);
+        lastFetched.set(Calendar.MILLISECOND, 0);
+
+        current.set(Calendar.HOUR_OF_DAY, 0);
+        current.set(Calendar.MINUTE, 0);
+        current.set(Calendar.SECOND, 0);
+        current.set(Calendar.MILLISECOND, 0);
+
+        // Check if the last fetch date is older than the current date
+        return lastFetched.before(current);
     }
 }
