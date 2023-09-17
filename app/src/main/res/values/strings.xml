@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">NASA Image</string>
+    <string name="image_title_placeholder">Loading Image Title...</string>
+    <string name="image_date_placeholder">Loading Date...</string>
+    <string name="image_description_placeholder">Loading Description...</string>
+    <string name="image_description">Image Description</string>
+</resources>
